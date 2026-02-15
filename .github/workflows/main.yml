@@ -30,7 +30,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Archive (Unsigned)
+      - name: Patch Broken Code 🛠️
+        run: |
+          # Remove the broken .debugBackground() call
+          sed -i '' 's/\.debugBackground()//g' "Swiftfin tvOS/Views/VideoPlayerContainerState/PlaybackControls/Components/SplitTimestamp.swift"
+          
+          # Fix the alignment inference error (changing .leading to Alignment.leading)
+          sed -i '' 's/alignment: \.leading/alignment: Alignment.leading/g' "Swiftfin tvOS/Views/VideoPlayerContainerState/PlaybackControls/Components/SplitTimestamp.swift"
+
+      - name: Build Archive (Ad-Hoc Signed)
         run: |
           xcodebuild archive \
             -scheme "Swiftfin tvOS" \
@@ -38,10 +46,12 @@ jobs:
             -destination "generic/platform=tvOS" \
             -archivePath build/Swiftfin.xcarchive \
             -skipMacroValidation \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM=""
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
 
       - name: Create IPA
         # Manually packages the .app into the .ipa format AltServer expects
