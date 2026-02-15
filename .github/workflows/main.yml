@@ -1,0 +1,57 @@
+name: "Build tvOS IPA 📺"
+
+on:
+  workflow_dispatch: # Allows you to manually trigger the build from the Actions tab
+  push:
+    branches: [ main ]
+
+jobs:
+  build-tvos:
+    name: "Build & Package"
+    runs-on: macos-15 # Uses the latest macOS runner
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies (SwiftGen)
+        run: brew install swiftgen
+
+      - name: Cache Carthage
+        uses: actions/cache@v4
+        with:
+          path: Carthage
+          key: ${{ runner.os }}-carthage-${{ hashFiles('**/Cartfile.resolved') }}
+          restore-keys: ${{ runner.os }}-carthage-
+
+      - name: Bootstrap Carthage
+        # 'bootstrap' is better for CI than 'update' as it uses exact versions from Cartfile.resolved
+        run: carthage bootstrap --platform tvOS --use-xcframeworks --cache-builds
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Archive (Unsigned)
+        # This forces xcode to build without trying to sign it, preventing errors about missing certificates
+        run: |
+          xcodebuild archive \
+            -scheme "Swiftfin tvOS" \
+            -configuration Release \
+            -destination "generic/platform=tvOS" \
+            -archivePath build/Swiftfin.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM=""
+
+      - name: Create IPA
+        # Manually packages the .app into the .ipa format AltServer expects
+        run: |
+          mkdir Payload
+          cp -r build/Swiftfin.xcarchive/Products/Applications/Swiftfin.app Payload/
+          zip -r Swiftfin_tvOS.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Swiftfin-tvOS-Unsigned
+          path: Swiftfin_tvOS.ipa
