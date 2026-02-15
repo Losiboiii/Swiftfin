@@ -31,13 +31,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Archive (Unsigned)
-        # This forces xcode to build without trying to sign it, preventing errors about missing certificates
         run: |
           xcodebuild archive \
             -scheme "Swiftfin tvOS" \
             -configuration Release \
             -destination "generic/platform=tvOS" \
             -archivePath build/Swiftfin.xcarchive \
+            -skipMacroValidation \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
