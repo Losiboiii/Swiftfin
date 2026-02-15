@@ -450,14 +450,6 @@ extension View {
 
     // Useful modifiers during development for layout without RocketSim
 
-    #if DEBUG
-    func debugBackground(_ fill: some ShapeStyle = .red.opacity(0.5)) -> some View {
-        background {
-            Rectangle()
-                .fill(fill)
-        }
-    }
-
     func debugOverlay(_ fill: some ShapeStyle = .red.opacity(0.5)) -> some View {
         overlay {
             Rectangle()
