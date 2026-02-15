@@ -1,17 +1,14 @@
-name: "Build tvOS IPA 📺"
-
+name: Build Swiftfin Artifact
 on:
-  workflow_dispatch: # Allows you to manually trigger the build from the Actions tab
+  workflow_dispatch: # Manual trigger
   push:
     branches: [ main ]
 
 jobs:
-  build-tvos:
-    name: "Build & Package"
-    runs-on: macos-15 # Uses the latest macOS runner
-
+  build:
+    runs-on: macos-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Install Dependencies (SwiftGen)
@@ -30,38 +27,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Patch Broken Code 🛠️
+      - name: Build Archive
         run: |
-          # Remove the broken .debugBackground() call
-          sed -i '' 's/\.debugBackground()//g' "Swiftfin tvOS/Views/VideoPlayerContainerState/PlaybackControls/Components/SplitTimestamp.swift"
-          
-          # Fix the alignment inference error (changing .leading to Alignment.leading)
-          sed -i '' 's/alignment: \.leading/alignment: Alignment.leading/g' "Swiftfin tvOS/Views/VideoPlayerContainerState/PlaybackControls/Components/SplitTimestamp.swift"
-
-      - name: Build Archive (Ad-Hoc Signed)
-        run: |
+          # Build the xcarchive without signing
           xcodebuild archive \
             -scheme "Swiftfin tvOS" \
             -configuration Release \
             -destination "generic/platform=tvOS" \
             -archivePath build/Swiftfin.xcarchive \
             -skipMacroValidation \
-            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=YES \
-            DEVELOPMENT_TEAM="" \
-            GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
+            CODE_SIGN_ENTITLEMENTS="" \
+            CODE_SIGNING_IDENTITY=""
 
-      - name: Create IPA
-        # Manually packages the .app into the .ipa format AltServer expects
+      - name: Package IPA
         run: |
-          mkdir Payload
-          cp -r build/Swiftfin.xcarchive/Products/Applications/Swiftfin.app Payload/
-          zip -r Swiftfin_tvOS.ipa Payload
+          # Create the Payload folder structure required for an IPA
+          mkdir -p build/Payload
+          cp -r build/Swiftfin.xcarchive/Products/Applications/*.app build/Payload/
+          cd build && zip -r Swiftfin.ipa Payload/
 
-      - name: Upload IPA
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Swiftfin-tvOS-Unsigned
-          path: Swiftfin_tvOS.ipa
+          name: swiftfin-tvos-latest
+          path: build/Swiftfin.ipa
